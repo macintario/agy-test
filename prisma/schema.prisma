@@ -1,0 +1,427 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum TipoAlumno {
+  interno
+  externo
+}
+
+enum BimestreEstatus {
+  planeado
+  abierto
+  cerrado
+  cancelado
+}
+
+enum GrupoEstado {
+  programado
+  abierto
+  cerrado
+  cancelado
+}
+
+enum EvaluacionTipo {
+  parcial
+  final
+}
+
+enum EvaluacionEstatus {
+  programada
+  capturada
+  cerrada
+  cancelada
+}
+
+enum InscripcionEstatus {
+  inscrito
+  baja
+  acreditado
+  no_acreditado
+  cancelado
+}
+
+model Role {
+  id          BigInt       @id @default(autoincrement())
+  codigo      String       @unique @db.VarChar(50)
+  nombre      String       @db.VarChar(100)
+  descripcion String?      @db.VarChar(255)
+  activo      Boolean      @default(true)
+  created_at  DateTime     @default(now())
+  updated_at  DateTime     @updatedAt
+
+  usuarios    UsuarioRol[]
+
+  @@map("roles")
+}
+
+model Idioma {
+  id         BigInt                     @id @default(autoincrement())
+  codigo     String                     @unique @db.VarChar(50)
+  nombre     String                     @db.VarChar(100)
+  activo     Boolean                    @default(true)
+  created_at DateTime                   @default(now())
+  updated_at DateTime                   @updatedAt
+
+  grupos        Grupo[]
+  habilitaciones DocenteIdiomaHabilitacion[]
+  supervisores   SupervisorIdioma[]
+
+  @@map("idiomas")
+}
+
+model Nivel {
+  id         BigInt                     @id @default(autoincrement())
+  codigo     String                     @unique @db.VarChar(50)
+  nombre     String                     @db.VarChar(100)
+  orden      Int                        @unique
+  activo     Boolean                    @default(true)
+  created_at DateTime                   @default(now())
+  updated_at DateTime                   @updatedAt
+
+  grupos        Grupo[]
+  habilitaciones DocenteIdiomaHabilitacion[]
+
+  @@map("niveles")
+}
+
+model Subnivel {
+  id         BigInt                     @id @default(autoincrement())
+  codigo     String                     @unique @db.VarChar(50)
+  nombre     String                     @db.VarChar(100)
+  orden      Int                        @unique
+  activo     Boolean                    @default(true)
+  created_at DateTime                   @default(now())
+  updated_at DateTime                   @updatedAt
+
+  grupos        Grupo[]
+  habilitaciones DocenteIdiomaHabilitacion[]
+
+  @@map("subniveles")
+}
+
+model Turno {
+  id         BigInt   @id @default(autoincrement())
+  codigo     String   @unique @db.VarChar(50)
+  nombre     String   @db.VarChar(100)
+  activo     Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  grupos     Grupo[]
+
+  @@map("turnos")
+}
+
+model Persona {
+  id               BigInt   @id @default(autoincrement())
+  nombres          String   @db.VarChar(120)
+  apellido_paterno String   @db.VarChar(120)
+  apellido_materno String?  @db.VarChar(120)
+  correo           String?  @unique @db.VarChar(190)
+  telefono         String?  @db.VarChar(30)
+  activo           Boolean  @default(true)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  usuario Usuario?
+  alumno  Alumno?
+  docente Docente?
+
+  @@map("personas")
+}
+
+model Usuario {
+  id            BigInt   @id @default(autoincrement())
+  persona_id    BigInt   @unique
+  username      String   @unique @db.VarChar(100)
+  password_hash String   @db.VarChar(255)
+  activo        Boolean  @default(true)
+  last_login_at DateTime?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  persona                  Persona                   @relation(fields: [persona_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  roles                    UsuarioRol[]
+  supervisor_idiomas       SupervisorIdioma[]
+  calificaciones_capturadas Calificacion[]          @relation("CalificacionCapturadaPor")
+  calificaciones_modificadas CalificacionHistorial[] @relation("CalificacionHistorialModificadoPor")
+
+  @@map("usuarios")
+}
+
+model UsuarioRol {
+  id         BigInt   @id @default(autoincrement())
+  usuario_id BigInt
+  rol_id     BigInt
+  created_at DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuario_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  rol     Role    @relation(fields: [rol_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([usuario_id, rol_id])
+  @@map("usuario_roles")
+}
+
+model Alumno {
+  id             BigInt   @id @default(autoincrement())
+  persona_id     BigInt   @unique
+  tipo_alumno    TipoAlumno
+  codigo_origen  String?  @unique @db.VarChar(60)
+  escuela_origen String?  @db.VarChar(255)
+  activo         Boolean  @default(true)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  persona       Persona        @relation(fields: [persona_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  inscripciones Inscripcion[]
+
+  @@map("alumnos")
+}
+
+model Docente {
+  id            BigInt   @id @default(autoincrement())
+  persona_id    BigInt   @unique
+  clave_docente String   @unique @db.VarChar(60)
+  activo        Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  persona      Persona                    @relation(fields: [persona_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  habilitaciones DocenteIdiomaHabilitacion[]
+  historial_grupos GrupoDocenteHistorial[]
+
+  @@map("docentes")
+}
+
+model SupervisorIdioma {
+  id         BigInt   @id @default(autoincrement())
+  usuario_id BigInt
+  idioma_id  BigInt
+  activo     Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  usuario Usuario @relation(fields: [usuario_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  idioma  Idioma  @relation(fields: [idioma_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([usuario_id, idioma_id])
+  @@map("supervisor_idiomas")
+}
+
+model DocenteIdiomaHabilitacion {
+  id                 BigInt   @id @default(autoincrement())
+  docente_id         BigInt
+  idioma_id          BigInt
+  nivel_maximo_id    BigInt
+  subnivel_maximo_id BigInt
+  activo             Boolean  @default(true)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  docente         Docente   @relation(fields: [docente_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  idioma          Idioma    @relation(fields: [idioma_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  nivel_maximo    Nivel     @relation(fields: [nivel_maximo_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  subnivel_maximo Subnivel  @relation(fields: [subnivel_maximo_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([docente_id, idioma_id])
+  @@map("docente_idioma_habilitaciones")
+}
+
+model Bimestre {
+  id             BigInt          @id @default(autoincrement())
+  anio           Int
+  bimestre_numero Int
+  codigo         String          @unique @db.VarChar(5)
+  fecha_inicio   DateTime        @db.Date
+  fecha_fin      DateTime        @db.Date
+  estatus        BimestreEstatus @default(planeado)
+  created_at     DateTime        @default(now())
+  updated_at     DateTime        @updatedAt
+
+  grupos Grupo[]
+
+  @@unique([anio, bimestre_numero])
+  @@map("bimestres")
+}
+
+model Grupo {
+  id            BigInt      @id @default(autoincrement())
+  bimestre_id   BigInt
+  idioma_id     BigInt
+  nivel_id      BigInt
+  subnivel_id   BigInt
+  turno_id      BigInt
+  folio         String      @unique @db.VarChar(30)
+  cupo_maximo   Int         @default(0)
+  estado        GrupoEstado @default(programado)
+  observaciones String?     @db.Text
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
+
+  bimestre      Bimestre     @relation(fields: [bimestre_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  idioma        Idioma       @relation(fields: [idioma_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  nivel         Nivel        @relation(fields: [nivel_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  subnivel      Subnivel     @relation(fields: [subnivel_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  turno         Turno        @relation(fields: [turno_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  horarios      GrupoHorario[]
+  docente_historial GrupoDocenteHistorial[]
+  inscripciones Inscripcion[]
+  evaluaciones  Evaluacion[]
+  calificaciones Calificacion[]
+
+  @@index([bimestre_id, idioma_id, nivel_id, subnivel_id, turno_id])
+  @@map("grupos")
+}
+
+model GrupoHorario {
+  id            BigInt   @id @default(autoincrement())
+  grupo_id      BigInt
+  dia_semana    Int
+  hora_inicio   DateTime @db.Time(0)
+  hora_fin      DateTime @db.Time(0)
+  observaciones String?  @db.VarChar(255)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  grupo Grupo @relation(fields: [grupo_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([grupo_id, dia_semana, hora_inicio, hora_fin])
+  @@map("grupo_horarios")
+}
+
+model GrupoDocenteHistorial {
+  id            BigInt   @id @default(autoincrement())
+  grupo_id      BigInt
+  docente_id    BigInt
+  fecha_inicio  DateTime @db.Date
+  fecha_fin     DateTime? @db.Date
+  es_principal  Boolean  @default(true)
+  observaciones String?  @db.Text
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  grupo  Grupo   @relation(fields: [grupo_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  docente Docente @relation(fields: [docente_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  clases  ClaseImpartida[]
+
+  @@index([grupo_id])
+  @@index([docente_id])
+  @@map("grupo_docente_historial")
+}
+
+model Inscripcion {
+  id                BigInt            @id @default(autoincrement())
+  grupo_id          BigInt
+  alumno_id         BigInt
+  fecha_inscripcion DateTime          @db.Date
+  estatus           InscripcionEstatus @default(inscrito)
+  calificacion_final Decimal?         @db.Decimal(4, 2)
+  aprobado          Boolean?
+  fecha_cierre      DateTime?
+  observaciones     String?           @db.Text
+  created_at        DateTime          @default(now())
+  updated_at        DateTime          @updatedAt
+
+  grupo          Grupo         @relation(fields: [grupo_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  alumno         Alumno        @relation(fields: [alumno_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  calificaciones Calificacion[]
+
+  @@unique([grupo_id, alumno_id])
+  @@index([alumno_id])
+  @@map("inscripciones")
+}
+
+model Evaluacion {
+  id               BigInt             @id @default(autoincrement())
+  grupo_id         BigInt
+  tipo             EvaluacionTipo
+  fecha_programada DateTime?          @db.Date
+  ponderacion      Decimal            @default(50.00) @db.Decimal(5, 2)
+  estatus          EvaluacionEstatus  @default(programada)
+  observaciones    String?             @db.Text
+  created_at       DateTime            @default(now())
+  updated_at       DateTime            @updatedAt
+
+  grupo          Grupo         @relation(fields: [grupo_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  calificaciones Calificacion[]
+
+  @@unique([grupo_id, tipo])
+  @@index([grupo_id])
+  @@map("evaluaciones")
+}
+
+model Calificacion {
+  id                        BigInt   @id @default(autoincrement())
+  grupo_id                  BigInt
+  inscripcion_id            BigInt
+  evaluacion_id             BigInt
+  calificacion              Decimal  @db.Decimal(4, 2)
+  capturada_por_usuario_id   BigInt
+  capturada_at               DateTime @default(now())
+  updated_at                 DateTime @updatedAt
+  observaciones             String?  @db.Text
+
+  grupo             Grupo      @relation(fields: [grupo_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  inscripcion       Inscripcion @relation(fields: [inscripcion_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  evaluacion        Evaluacion  @relation(fields: [evaluacion_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  capturada_por_usuario Usuario @relation("CalificacionCapturadaPor", fields: [capturada_por_usuario_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  historial         CalificacionHistorial[]
+
+  @@unique([inscripcion_id, evaluacion_id])
+  @@index([grupo_id])
+  @@index([inscripcion_id])
+  @@index([evaluacion_id])
+  @@map("calificaciones")
+}
+
+model CalificacionHistorial {
+  id                     BigInt   @id @default(autoincrement())
+  calificacion_id        BigInt
+  valor_anterior         Decimal  @db.Decimal(4, 2)
+  valor_nuevo            Decimal  @db.Decimal(4, 2)
+  modificado_por_usuario_id BigInt
+  motivo                 String?  @db.VarChar(255)
+  modificado_at          DateTime @default(now())
+
+  calificacion        Calificacion @relation(fields: [calificacion_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  modificado_por_usuario Usuario  @relation("CalificacionHistorialModificadoPor", fields: [modificado_por_usuario_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([calificacion_id])
+  @@map("calificaciones_historial")
+}
+
+model ClaseImpartida {
+  id                        BigInt   @id @default(autoincrement())
+  grupo_docente_historial_id BigInt
+  fecha_clase               DateTime @db.Date
+  hora_inicio               DateTime? @db.Time(0)
+  hora_fin                  DateTime? @db.Time(0)
+  tema                      String?  @db.VarChar(255)
+  observaciones             String?  @db.Text
+  created_at                DateTime @default(now())
+  updated_at                DateTime @updatedAt
+
+  grupo_docente_historial GrupoDocenteHistorial @relation(fields: [grupo_docente_historial_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([grupo_docente_historial_id])
+  @@index([fecha_clase])
+  @@map("clases_impartidas")
+}
+
+model ConfiguracionAcademica {
+  id          BigInt   @id @default(autoincrement())
+  clave       String   @unique @db.VarChar(100)
+  valor       String   @db.VarChar(255)
+  descripcion String?  @db.VarChar(255)
+  activo      Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@map("configuracion_academica")
+}

@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+.DS_Store
+coverage
+*.log
+prisma/migrations/*/migration.sql-wal
+prisma/migrations/*/migration.sql-shm
