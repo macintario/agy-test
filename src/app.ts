@@ -17,29 +17,33 @@ import { ZodError } from 'zod';
 
 export function createApp() {
   const app = express();
+  const rawBasePath = process.env.APP_BASE_PATH?.trim() || '/celex';
+  const normalizedBase = rawBasePath.startsWith('/') ? rawBasePath : `/${rawBasePath}`;
+  const appBasePath = normalizedBase.replace(/\/+$/, '') || '/';
 
   app.use(helmet());
   app.use(cors());
   app.use(express.json({ limit: '1mb' }));
 
-  app.get('/', (_req, res) => {
+  app.get(`${appBasePath}/`, (_req, res) => {
     res.json({
       name: 'Celex Grades API',
       version: '0.1.0',
+      base_path: appBasePath,
     });
   });
 
-  app.use('/health', healthRouter);
-  app.use('/api/catalogs', catalogsRouter);
-  app.use('/api/auth', authRouter);
-  app.use('/api/users', usersRouter);
-  app.use('/api/alumnos', alumnosRouter);
-  app.use('/api/docentes', docentesRouter);
-  app.use('/api/bimestres', bimestresRouter);
-  app.use('/api/grupos', gruposRouter);
-  app.use('/api/inscripciones', inscripcionesRouter);
-  app.use('/api/evaluaciones', evaluacionesRouter);
-  app.use('/api/calificaciones', calificacionesRouter);
+  app.use(`${appBasePath}/health`, healthRouter);
+  app.use(`${appBasePath}/api/catalogs`, catalogsRouter);
+  app.use(`${appBasePath}/api/auth`, authRouter);
+  app.use(`${appBasePath}/api/users`, usersRouter);
+  app.use(`${appBasePath}/api/alumnos`, alumnosRouter);
+  app.use(`${appBasePath}/api/docentes`, docentesRouter);
+  app.use(`${appBasePath}/api/bimestres`, bimestresRouter);
+  app.use(`${appBasePath}/api/grupos`, gruposRouter);
+  app.use(`${appBasePath}/api/inscripciones`, inscripcionesRouter);
+  app.use(`${appBasePath}/api/evaluaciones`, evaluacionesRouter);
+  app.use(`${appBasePath}/api/calificaciones`, calificacionesRouter);
 
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
     if (err instanceof ZodError) {

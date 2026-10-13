@@ -4,10 +4,11 @@ import { prisma } from './lib/prisma';
 
 const port = Number(process.env.PORT ?? 3000);
 const app = createApp();
+const appBasePath = (process.env.APP_BASE_PATH?.trim() || '/celex').replace(/\/+$/, '') || '/';
 
 async function main() {
   app.listen(port, () => {
-    console.log(`Celex Grades API listening on http://localhost:${port}`);
+    console.log(`Celex Grades API listening on http://localhost:${port}${appBasePath}`);
   });
 }
 
