@@ -5,7 +5,8 @@ export default defineConfig({
   base: '/celex/',
   plugins: [react()],
   server: {
-    port: 5173,
+    port: 5176,
+    allowedHosts: ['www.kuali.des.ipn.mx'],
     proxy: {
       '/celex/api': {
         target: 'http://localhost:3000',
